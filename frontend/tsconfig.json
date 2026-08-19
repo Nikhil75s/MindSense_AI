@@ -36,7 +36,7 @@
         "../database/models/*"
       ],
       "@/lib/db": [
-        "../database/db.ts"
+        "../backend/lib/db.ts"
       ],
       "@/lib/ai": [
         "../backend/lib/ai.ts"
