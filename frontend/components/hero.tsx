@@ -34,7 +34,7 @@ const ANALYSIS_STAGES = [
 
 export default function Hero() {
   const [stageIndex, setStageIndex] = useState(0)
-  const [barWidths, setBarWidths] = useState([72, 45, 28, 61, 39, 55, 48])
+  const [barWidths, setBarWidths] = useState([72, 45, 28, 61, 39, 55, 48, 36])
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {

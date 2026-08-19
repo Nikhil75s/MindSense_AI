@@ -7,7 +7,6 @@ import type {
   SentenceAnalysis,
   SentimentLabel,
 } from "./types";
-import PipelineSingleton from "./ai";
 
 // ─── Emotion Definitions ───────────────────────────────────────────────────
 
@@ -119,12 +118,10 @@ function cleanText(text: string): string {
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[^\w\s']/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 function detectLanguage(text: string): string {
-  // Basic language detection by character patterns
   if (/[\u0900-\u097F]/.test(text)) return "Hindi";
   if (/[\u0600-\u06FF]/.test(text)) return "Arabic";
   if (/[\u4e00-\u9fa5]/.test(text)) return "Chinese";
@@ -136,54 +133,37 @@ function detectLanguage(text: string): string {
 function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 5);
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 5);
 }
 
-// ─── Scoring Engine ────────────────────────────────────────────────────────
-
+// Uses deterministic scoring while the optional transformer runtime is unavailable.
 async function scoreEmotions(text: string): Promise<Record<EmotionLabel, number>> {
-  if (!text || text.trim() === "") {
+  if (!text.trim()) {
     return {
-      Depression: 0, Anxiety: 0, Stress: 0, Happiness: 0, 
-      Anger: 0, Fear: 0, Sadness: 0, Neutral: 100
-    } as Record<EmotionLabel, number>;
+      Depression: 0, Anxiety: 0, Stress: 0, Happiness: 0,
+      Anger: 0, Fear: 0, Sadness: 0, Neutral: 100,
+    };
   }
 
-  const classifier = await PipelineSingleton.getInstance();
-  const results = await classifier(text, { topk: 2 });
-  
-  // Results is an array of objects
-  const scoresObj: Record<string, number> = {};
-  for (const r of results) {
-    scoresObj[r.label] = r.score;
+  return scoreWithKeywords(text);
+}
+
+function scoreWithKeywords(text: string): Record<EmotionLabel, number> {
+  const normalized = cleanText(text);
+  const scores = {} as Record<EmotionLabel, number>;
+
+  for (const emotion of Object.keys(EMOTION_DEFINITIONS) as EmotionLabel[]) {
+    const definition = EMOTION_DEFINITIONS[emotion];
+    const matches = definition.keywords.filter((keyword) => normalized.includes(keyword)).length;
+    scores[emotion] = matches === 0 ? 0 : Math.min(95, 25 + matches * 22 * definition.weight);
   }
 
-  const positive = scoresObj['POSITIVE'] || 0;
-  const negative = scoresObj['NEGATIVE'] || 0;
-
-  // We map the binary sentiment from the real AI into our specific emotion categories.
-  // Minor variations are added so the charts render dynamically, but the core analysis
-  // is driven entirely by the neural network's contextual understanding of the text.
-  const mapped: Record<string, number> = {
-    Depression: negative * 80 + Math.random() * 15,
-    Sadness: negative * 85 + Math.random() * 10,
-    Happiness: positive * 90 + Math.random() * 5,
-    Anger: negative * 60 + Math.random() * 20,
-    Fear: negative * 50 + Math.random() * 20,
-    Anxiety: negative * 70 + Math.random() * 15,
-    Stress: negative * 75 + Math.random() * 15,
-    Neutral: 0
-  };
-
-  const diff = Math.abs(positive - negative);
-  mapped.Neutral = (1 - diff) * 80 + Math.random() * 20;
-
-  for (const key in mapped) {
-    mapped[key] = Math.min(95, mapped[key]);
+  if (Object.values(scores).every((score) => score === 0)) {
+    scores.Neutral = 80;
   }
 
-  return mapped as Record<EmotionLabel, number>;
+  return scores;
 }
 
 function buildEmotionScores(scores: Record<EmotionLabel, number>): EmotionScore[] {

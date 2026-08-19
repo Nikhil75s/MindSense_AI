@@ -6,12 +6,12 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 dotenv.config(); // Fallback to current directory
 
-const MONGO_URI = process.env.MONGO_URI || "";
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || "";
 
 if (!MONGO_URI) {
   console.warn(
     "[MindSense] MONGO_URI is not set. Database features will not work.\n" +
-    "Add MONGO_URI to your .env file."
+    "Add MONGO_URI or MONGODB_URI to your .env file."
   );
 }
 
@@ -28,13 +28,18 @@ if (!cached) {
 }
 
 export const connectDB = async (): Promise<typeof mongoose> => {
-  if (cached.conn) {
+  if (cached.conn && cached.conn.connection.readyState === 1) {
     return cached.conn;
+  }
+
+  if (cached.conn) {
+    cached.conn = null;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 10000,
     };
 
     cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {

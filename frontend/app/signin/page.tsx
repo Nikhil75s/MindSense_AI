@@ -93,6 +93,20 @@ function SignInContent() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11"
+              onClick={() => { window.location.href = "/api/auth/google" }}
+            >
+              Continue with Google
+            </Button>
+
+            <div className="relative py-1 text-center text-xs text-muted-foreground">
+              <span className="bg-card px-2 relative z-10">or use your email</span>
+              <div className="absolute inset-x-0 top-1/2 border-t border-border/40" />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
